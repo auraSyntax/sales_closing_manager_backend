@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{subject}}</title>
+    {{> common/styles}}
+</head>
+<body>
+    {{> common/header}}
+    
+    <h1>Welcome, {{name}}!</h1>
+    
+    <p>Thank you for joining {{companyName}}.</p>
+    
+    {{#if activationLink}}
+    <p>
+        Please activate your account: 
+        <a href="#">Activate Now</a>
+    </p>
+    {{/if}}
+    
+    {{> common/footer}}
+</body>
+</html>
