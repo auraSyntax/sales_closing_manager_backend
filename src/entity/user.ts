@@ -33,11 +33,11 @@ export class User {
   @Column({ name: 'logo' })
   logo: string;
 
-  @Column({ 
-    type: 'enum', 
-    enum: UserType, 
-    default: UserType.ADMIN, 
-    name: 'user_type' 
+  @Column({
+    type: 'enum',
+    enum: UserType,
+    default: UserType.ADMIN,
+    name: 'user_type'
   })
   userType: UserType;
 
@@ -58,4 +58,7 @@ export class User {
 
   @Column({ name: 'work_force_size' })
   workForceSize: string;
+
+  @Column({ name: 'reset_token', nullable: true })
+  resetToken: string;
 }
