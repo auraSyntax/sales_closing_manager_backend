@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { JwtAuthGuard } from './security/jwt-auth.guard';
 
 async function bootstrap() {
-  // Debug environment variables
   console.log('=== Environment Variables Debug ===');
   console.log('DB_HOST:', process.env.DB_HOST);
   console.log('DB_PORT:', process.env.DB_PORT);
@@ -14,6 +14,10 @@ async function bootstrap() {
   console.log('===================================');
 
   const app = await NestFactory.create(AppModule);
+
+  // Register global JWT guard
+  app.useGlobalGuards(new JwtAuthGuard());
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
