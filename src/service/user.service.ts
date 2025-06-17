@@ -25,21 +25,21 @@ export class UserService {
   ) { }
 
 
-async createUser(dto: UserDto): Promise<ResponseDto> {
+  async createUser(dto: UserDto): Promise<ResponseDto> {
     await this.validateEmailUniqueness(dto.email, dto.id);
 
     const user = await this.convert(dto);
     await this.userRepository.save(user);
 
-     await this.mailService.sendMail(
+    await this.mailService.sendMail(
       dto.email,
       'Welcome to our platform',
-      `Hello ${dto.fullName}, welcome to our service!`,
-      `<p>Hello <strong>${dto.fullName}</strong>, welcome to our service!</p>`
+      { fullName: dto.fullName },
+      'welcome-template'
     );
     return new ResponseDto('USER_SAVED');
 
-   
+
   }
 
 
@@ -67,11 +67,11 @@ async createUser(dto: UserDto): Promise<ResponseDto> {
       existing.companyName = dto.companyName;
       existing.email = dto.email;
       existing.phoneNo = dto.phoneNo;
-      
+
       if (dto.password) {
         existing.password = await this.hashPassword(dto.password);
       }
-      
+
       existing.adminId = dto.adminId;
       existing.isActive = dto.isActive ?? true;
       existing.logo = dto.logo;
@@ -81,7 +81,7 @@ async createUser(dto: UserDto): Promise<ResponseDto> {
     }
 
     const hashedPassword = await this.hashPassword(dto.password);
-    
+
     return this.userRepository.create({
       ...dto,
       password: hashedPassword,
@@ -114,7 +114,7 @@ async createUser(dto: UserDto): Promise<ResponseDto> {
         'u.phoneNo',
         'u.isActive',
       ])
-      .where('u.companyName LIKE :search', { search: likeSearch })
+      .where(':search IS NULL OR u.companyName LIKE :search OR u.email LIKE :search OR u.fullName LIKE :search', { search: likeSearch })
       .skip(offset)
       .take(size);
 
@@ -178,25 +178,25 @@ async createUser(dto: UserDto): Promise<ResponseDto> {
   }
 
   async updateUserCredentials(dto: UpdateCredentialsDto): Promise<ResponseDto> {
-  const user = await this.userRepository.findOneBy({ id: dto.userId });
-  if (!user) {
-    throw new Error('USER_NOT_FOUND');
+    const user = await this.userRepository.findOneBy({ id: dto.userId });
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new Error('INVALID_CURRENT_PASSWORD');
+    }
+
+    await this.validateEmailUniqueness(dto.newEmail, dto.userId);
+
+    user.email = dto.newEmail;
+    user.password = await this.hashPassword(dto.newPassword);
+
+    await this.userRepository.save(user);
+
+    return new ResponseDto('CREDENTIALS_UPDATED_SUCCESSFULLY');
   }
-
-  const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
-  if (!isPasswordValid) {
-    throw new Error('INVALID_CURRENT_PASSWORD');
-  }
-
-  await this.validateEmailUniqueness(dto.newEmail, dto.userId);
-
-  user.email = dto.newEmail;
-  user.password = await this.hashPassword(dto.newPassword);
-
-  await this.userRepository.save(user);
-
-  return new ResponseDto('CREDENTIALS_UPDATED_SUCCESSFULLY');
-}
 }
 
 
