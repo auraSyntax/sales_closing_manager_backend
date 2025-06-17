@@ -7,6 +7,10 @@ import { UserController } from './controller/user.controller';
 import { UserService } from './service/user.service';
 import { UserConverter } from './converter/user.converter';
 import { EmailService } from './service/mail.service';
+import { AuthMechanism } from 'typeorm';
+import { AuthController } from './controller/auth.controller';
+import { AuthService } from './service/auth.service';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { CloudinaryModule } from './cloudinary.module';
 
 @Module({
@@ -36,9 +40,20 @@ import { CloudinaryModule } from './cloudinary.module';
       },
     }),
     TypeOrmModule.forFeature([User]),
-    CloudinaryModule,
+
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1d' },
+      }),
+    }),
+    
   ],
-  controllers: [UserController],
-  providers: [UserService, UserConverter, EmailService],
+  controllers: [UserController, AuthController],
+  providers: [UserService, UserConverter, EmailService, AuthService],
 })
 export class AppModule {}
+
+
