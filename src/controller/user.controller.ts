@@ -22,7 +22,7 @@ export class UserController {
     return this.userService.getAllUsers(page, size, search);
   }
 
-  @Get(':userId')
+  @Get('user-by-id')
   async getUserById(@Param('userId') userId: string): Promise<UserDto> {
     if (!userId) {
       throw new NotFoundException("userId can't be blank");

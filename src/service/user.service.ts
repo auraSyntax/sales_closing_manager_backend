@@ -210,7 +210,7 @@ export class UserService {
 
     const token = authHeader.replace('Bearer ', '');
     const tokenInfo = TokenService.getTokenInfo(token);
-    const adminId = tokenInfo.sub;
+    const adminId = tokenInfo.sub; // assuming sub holds adminId
 
     console.log('Extracted adminId:', adminId);
 
@@ -242,7 +242,6 @@ export class UserService {
       activeCompanies: parseInt(result.activeCount, 10),
     };
   }
-
 
 }
 
