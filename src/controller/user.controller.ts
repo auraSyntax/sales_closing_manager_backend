@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, ParseIntPipe, Post, Put, Query, Req } from '@nestjs/common';
 import { UserService } from '../service/user.service';
 import { ResponseDto } from 'src/dto/response.dto';
 import { UserDto } from 'src/dto/user.dto';
 import { PaginatedResponseDto } from 'src/dto/paginated.response.dto';
 import { UserResponseDto } from 'src/dto/user.response.dto';
 import { UpdateCredentialsDto } from 'src/dto/user.credentials.dto';
+import { CurrentUserDetailsDto } from 'src/dto/current-user-details.dto';
 
 @Controller('user')
 export class UserController {
@@ -47,5 +48,10 @@ export class UserController {
   @Put('user-credentials')
   async updateUserCredentials(@Body() dto: UpdateCredentialsDto): Promise<ResponseDto> {
     return this.userService.updateUserCredentials(dto);
+  }
+
+  @Get('current-user')
+  async getCurrentUserDetails(@Req() request: Request): Promise<CurrentUserDetailsDto> {
+    return this.userService.getCurrentUserDetails(request);
   }
 }

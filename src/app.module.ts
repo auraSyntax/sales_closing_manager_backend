@@ -12,6 +12,7 @@ import { AuthController } from './controller/auth.controller';
 import { AuthService } from './service/auth.service';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { CloudinaryModule } from './cloudinary.module';
+import { TokenService } from './service/token.service';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { CloudinaryModule } from './cloudinary.module';
     
   ],
   controllers: [UserController, AuthController],
-  providers: [UserService, UserConverter, EmailService, AuthService],
+  providers: [UserService, UserConverter, EmailService, AuthService,TokenService],
 })
 export class AppModule {}
 

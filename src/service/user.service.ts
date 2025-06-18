@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserConverter } from 'src/converter/user.converter';
 import { PaginatedResponseDto } from 'src/dto/paginated.response.dto';
@@ -13,6 +13,8 @@ import { EmailService } from './mail.service';
 import { EmailDataDto } from 'src/dto/email-data.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateCredentialsDto } from 'src/dto/user.credentials.dto';
+import { CurrentUserDetailsDto } from 'src/dto/current-user-details.dto';
+import { TokenService } from './token.service';
 
 
 @Injectable()
@@ -22,6 +24,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly userConverter: UserConverter,
     private readonly mailService: EmailService,
+    private readonly tokenService: TokenService
   ) { }
 
 
@@ -197,6 +200,50 @@ export class UserService {
 
     return new ResponseDto('CREDENTIALS_UPDATED_SUCCESSFULLY');
   }
+
+  async getCurrentUserDetails(request: Request): Promise<CurrentUserDetailsDto> {
+    const authHeader = request.headers['authorization'];
+
+    if (!authHeader) {
+      throw new UnauthorizedException('Authorization header missing');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const tokenInfo = TokenService.getTokenInfo(token);
+    const adminId = tokenInfo.sub;
+
+    console.log('Extracted adminId:', adminId);
+
+    if (!adminId) {
+      throw new UnauthorizedException('Invalid token - adminId not found');
+    }
+
+    const result = await this.userRepository
+      .createQueryBuilder('u')
+      .select('u.fullName', 'fullName')
+      .addSelect('u.logo', 'profile')
+      .addSelect('COUNT(u.id)', 'totalCount')
+      .addSelect(`SUM(CASE WHEN u.isActive = true THEN 1 ELSE 0 END)`, 'activeCount')
+      .where('u.adminId = :adminId', { adminId })
+      .groupBy('u.fullName')
+      .addGroupBy('u.logo')
+      .getRawOne();
+
+    console.log('Query result:', result);
+
+    if (!result) {
+      throw new NotFoundException('No user found for the given adminId');
+    }
+
+    return {
+      userName: result.fullName,
+      profile: result.profile,
+      totalCompanies: parseInt(result.totalCount, 10),
+      activeCompanies: parseInt(result.activeCount, 10),
+    };
+  }
+
+
 }
 
 
