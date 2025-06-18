@@ -8,6 +8,8 @@ import { User } from 'src/entity/user';
 import { AuthRequestDto } from 'src/dto/auth-request.dto';
 import { AuthResponseDto } from 'src/dto/auth.response.dto';
 import { ResetPasswordDto } from 'src/dto/reset-password.dto';
+import { MailerService } from '@nestjs-modules/mailer';
+import { EmailService } from './mail.service';
 
 
 @Injectable()
@@ -15,7 +17,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService
   ) {}
 
   async login(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
@@ -74,20 +77,34 @@ export class AuthService {
     }
   }
 
-  async handleForgotPassword(email: string) {
+async handleForgotPassword(email: string) {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('User not found with provided email');
     }
 
-    const resetToken = uuidv4(); 
+    const resetToken = uuidv4();
     user.resetToken = resetToken;
     await this.userRepository.save(user);
 
-    // for now, log token — in real app, you'd email this
-    console.log(`Reset token for ${email}: ${resetToken}`);
+    // Build reset link
+    const resetLink = `https://yourdomain.com/reset-password?token=${resetToken}`;
 
-    return { message: 'Password reset link sent (check console log for token)' };
+    // Prepare email context
+    const context = {
+      USER_NAME: user.fullName,  // assuming your user has fullName property
+      RESET_LINK: resetLink,
+    };
+
+    // Send email
+    await this.emailService.sendMail(
+      user.email,
+      'Reset Your Password',
+      context,
+      'reset-password-template'  
+    );
+
+    return { message: 'Password reset email sent successfully' };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
