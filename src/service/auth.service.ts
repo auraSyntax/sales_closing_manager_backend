@@ -16,7 +16,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService
-  ) {}
+  ) { }
 
   async login(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
     const { email, password } = authRequestDto;
@@ -46,7 +46,8 @@ export class AuthService {
     const response = new AuthResponseDto();
     response.jwtToken = jwtToken;
     response.refreshToken = refreshToken;
-
+    response.userName = authRequestDto.email;
+    response.expirationTime = "15m"
     return response;
   }
 
@@ -80,7 +81,7 @@ export class AuthService {
       throw new NotFoundException('User not found with provided email');
     }
 
-    const resetToken = uuidv4(); 
+    const resetToken = uuidv4();
     user.resetToken = resetToken;
     await this.userRepository.save(user);
 

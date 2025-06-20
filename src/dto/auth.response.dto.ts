@@ -1,4 +1,7 @@
 export class AuthResponseDto {
     jwtToken: String;
-    refreshToken: String
+    refreshToken: String;
+    userName:String;
+    expirationTime:String
+
 }

@@ -54,4 +54,5 @@ export class UserController {
   async getCurrentUserDetails(@Req() request: Request): Promise<CurrentUserDetailsDto> {
     return this.userService.getCurrentUserDetails(request);
   }
+
 }
