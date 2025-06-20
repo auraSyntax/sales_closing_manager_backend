@@ -13,14 +13,20 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('MAIL_HOST'),
       port: this.configService.get<number>('MAIL_PORT'),
-      secure: false,
+      secure: true, // required for port 465
       auth: {
         user: this.configService.get<string>('MAIL_USERNAME'),
         pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
+    });
+
+    // Optional: verify connection config at startup
+    this.transporter.verify((error, success) => {
+      if (error) {
+        console.error('SMTP connection failed:', error);
+      } else {
+        console.log('SMTP server is ready to take messages');
+      }
     });
   }
 
@@ -30,20 +36,24 @@ export class EmailService {
     context: any,
     templateName: string,
   ): Promise<void> {
-    // Compile the template first
     const html = this.renderTemplate(templateName, context);
 
     await this.transporter.sendMail({
-      from: '"No Reply" <your.email@example.com>',
+      from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_EMAIL')}>`,
       to,
       subject,
       text: `Hello ${context.fullName}, welcome to our service!`,
       html,
     });
   }
+
   private renderTemplate(templateName: string, context: any): string {
-    // Corrected path
-    const templatePath = path.resolve(process.cwd(), 'src', 'templates', `${templateName}.html`);
+    const templatePath = path.resolve(
+      process.cwd(),
+      'src',
+      'templates',
+      `${templateName}.html`,
+    );
 
     if (!fs.existsSync(templatePath)) {
       console.error(`Template not found at: ${templatePath}`);
@@ -51,9 +61,7 @@ export class EmailService {
     }
 
     const templateSource = fs.readFileSync(templatePath, 'utf8');
-    return handlebars.compile(templateSource)(context);
+    const template = handlebars.compile(templateSource);
+    return template(context);
   }
-
-
 }
-

@@ -3,12 +3,14 @@ import { jwtDecode } from 'jwt-decode';
 interface DecodedToken {
   sub: string;
   email: string;
+  userType: string;
   [key: string]: any;
 }
 
 export interface TokenInfoDto {
   sub: string | null;
   email: string | null;
+  userType: string | null;
 }
 
 export class TokenService {
@@ -23,22 +25,13 @@ export class TokenService {
     }
   }
 
-  static getSub(token: string): string | null {
-    const decoded = this.decodeToken(token);
-    return decoded ? decoded.sub : null;
-  }
-
-  static getEmail(token: string): string | null {
-    const decoded = this.decodeToken(token);
-    return decoded ? decoded.email : null;
-  }
-
   // New method to get DTO with sub and email
   static getTokenInfo(token: string): TokenInfoDto {
     const decoded = this.decodeToken(token);
     return {
       sub: decoded?.sub ?? null,
       email: decoded?.email ?? null,
+      userType: decoded?.userType ?? null
     };
   }
 }
