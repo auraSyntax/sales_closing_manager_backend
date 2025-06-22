@@ -11,15 +11,17 @@ import { ResetPasswordDto } from 'src/dto/reset-password.dto';
 import { MailerService } from '@nestjs-modules/mailer';
 import { EmailService } from './mail.service';
 import { ServiceException } from 'src/exception/service-exception';
+import { ConfigService } from '@nestjs/config';
 
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly configService: ConfigService, 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) { }
 
   async login(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
@@ -29,6 +31,10 @@ export class AuthService {
 
     if (!user) {
       throw new ServiceException('User not found!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+     if (user.isFirstLogin) {
+      throw new ServiceException('Reset your password to continue the login!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -119,12 +125,15 @@ export class AuthService {
     user.resetToken = resetToken;
     await this.userRepository.save(user);
 
+    // Get frontend URL from env
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+
     // Build reset link
-    const resetLink = `https://yourdomain.com/reset-password?token=${resetToken}`;
+    const resetLink = `${frontendUrl}/new-password?token=${resetToken}`;
 
     // Prepare email context
     const context = {
-      USER_NAME: user.fullName,  // assuming your user has fullName property
+      USER_NAME: user.fullName,
       RESET_LINK: resetLink,
     };
 
@@ -150,6 +159,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     user.resetToken = "";
+    user.isFirstLogin = false;
 
     await this.userRepository.save(user);
 

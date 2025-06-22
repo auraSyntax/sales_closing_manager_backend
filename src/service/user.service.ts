@@ -15,18 +15,18 @@ import { UpdateCredentialsDto } from 'src/dto/user.credentials.dto';
 import { CurrentUserDetailsDto } from 'src/dto/current-user-details.dto';
 import { TokenService } from './token.service';
 import { ServiceException } from 'src/exception/service-exception';
-
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
   constructor(
+    private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly userConverter: UserConverter,
     private readonly mailService: EmailService,
     private readonly tokenService: TokenService
   ) { }
-
 
   async createUser(dto: UserDto): Promise<ResponseDto> {
     await this.validateEmailUniqueness(dto.email, dto.id);
@@ -37,11 +37,25 @@ export class UserService {
     await this.userRepository.save(user);
 
     if (isNewUser) {
+      const resetToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+      // Optionally save the token if needed
+      user.resetToken = resetToken;
+      user.isFirstLogin = true;
+      await this.userRepository.save(user);
+
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+      const resetLink = `${frontendUrl}/new-password?token=${resetToken}`;
+
       await this.mailService.sendMail(
         dto.email,
-        'Welcome to our platform',
-        { fullName: dto.fullName },
-        'welcome-template'
+        'Your Account Has Been Created',
+        {
+          USER_NAME: dto.fullName,
+          TEMP_PASSWORD: dto.password,
+          RESET_LINK: resetLink,
+        },
+        'account-creation-template'
       );
     }
 
@@ -83,7 +97,7 @@ export class UserService {
       existing.nafCode = dto.nafCode
       existing.legalStatus = dto.legalStatus
       existing.workForceSize = dto.workForceSize
-
+      
       return existing;
     }
 
@@ -243,9 +257,10 @@ export class UserService {
       .createQueryBuilder('u')
       .select('u.fullName', 'fullName')
       .addSelect('u.logo', 'profile')
+      .addSelect('u.userType', 'userType')
       .addSelect('COUNT(u.id)', 'totalCount')
       .addSelect(`SUM(CASE WHEN u.isActive = true THEN 1 ELSE 0 END)`, 'activeCount')
-      .where('u.adminId = :adminId', { adminId })
+      .where('u.id = :adminId', { adminId })
       .groupBy('u.fullName')
       .addGroupBy('u.logo')
       .getRawOne();
@@ -261,9 +276,14 @@ export class UserService {
       profile: result.profile,
       totalCompanies: parseInt(result.totalCount, 10),
       activeCompanies: parseInt(result.activeCount, 10),
+      userType: result.userType
     };
   }
 
 }
 
+
+function uuidv4() {
+  throw new Error('Function not implemented.');
+}
 

@@ -3,5 +3,6 @@ export class CurrentUserDetailsDto {
     userName: string;
     activeCompanies: number;
     totalCompanies: number;
-    profile: string
+    profile: string;
+    userType: string
 }
