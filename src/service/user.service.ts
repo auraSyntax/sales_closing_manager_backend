@@ -7,7 +7,7 @@ import { UserDto } from 'src/dto/user.dto';
 import { UserResponseDto } from 'src/dto/user.response.dto';
 import { User } from 'src/entity/user';
 import { UserType } from 'src/enums/user_type.enum';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { EmailService } from './mail.service';
 import { EmailDataDto } from 'src/dto/email-data.dto';
 import * as bcrypt from 'bcrypt';
@@ -123,7 +123,14 @@ export class UserService {
         'u.phoneNo',
         'u.isActive',
       ])
-      .where(':search IS NULL OR u.companyName LIKE :search OR u.email LIKE :search OR u.fullName LIKE :search', { search: likeSearch })
+      .where(
+        new Brackets((qb) => {
+          qb.where('u.companyName LIKE :search')
+            .orWhere('u.email LIKE :search')
+            .orWhere('u.fullName LIKE :search');
+        }),
+      )
+      .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
       .skip(offset)
       .take(size);
 
@@ -131,7 +138,14 @@ export class UserService {
       query.getRawMany(),
       this.userRepository
         .createQueryBuilder('u')
-        .where('u.companyName LIKE :search', { search: likeSearch })
+        .where(
+          new Brackets((qb) => {
+            qb.where('u.companyName LIKE :search')
+              .orWhere('u.email LIKE :search')
+              .orWhere('u.fullName LIKE :search');
+          }),
+        )
+        .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
         .getCount(),
     ]);
 
@@ -157,6 +171,7 @@ export class UserService {
 
     return paginatedResponseDto;
   }
+
 
   async getUserById(userId: string): Promise<UserDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
