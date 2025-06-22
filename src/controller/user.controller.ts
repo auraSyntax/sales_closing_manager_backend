@@ -12,7 +12,7 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Post()
-  createUser(@Body() userDto: UserDto): Promise<ResponseDto> {
+  async createUser(@Body() userDto: UserDto): Promise<ResponseDto> {
     return this.userService.createUser(userDto);
   }
 
@@ -22,7 +22,7 @@ export class UserController {
   }
 
   @Get('user-by-id')
-  async getUserById(@Param('userId') userId: string): Promise<UserDto> {
+  async getUserById(@Query('userId') userId: string): Promise<UserDto> {
     if (!userId) {
       throw new NotFoundException("userId can't be blank");
     }

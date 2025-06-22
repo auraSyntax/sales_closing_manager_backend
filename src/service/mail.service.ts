@@ -10,17 +10,20 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor(private configService: ConfigService) {
+    const mailPort = this.configService.get<number>('MAIL_PORT');
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('MAIL_HOST'),
-      port: this.configService.get<number>('MAIL_PORT'),
-      secure: true, // required for port 465
+      port: mailPort,
+      secure: false, // MUST be false for port 587 (STARTTLS)
       auth: {
         user: this.configService.get<string>('MAIL_USERNAME'),
         pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
+      requireTLS: true,
     });
 
-    // Optional: verify connection config at startup
+    // Optional: Verify SMTP connection at startup
     this.transporter.verify((error, success) => {
       if (error) {
         console.error('SMTP connection failed:', error);
