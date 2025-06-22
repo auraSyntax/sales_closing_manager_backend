@@ -17,7 +17,6 @@ export class UserController {
   }
 
   @Get()
-  // @UseGuards(ManagerGuard)
   async getAllUsers(@Query('page', ParseIntPipe) page: number, @Query('size', ParseIntPipe) size: number, @Query('search') search: string): Promise<PaginatedResponseDto<UserResponseDto>> {
     return this.userService.getAllUsers(page, size, search);
   }

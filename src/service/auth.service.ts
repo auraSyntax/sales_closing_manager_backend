@@ -20,10 +20,10 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService
-  ) {  }
+  ) { }
 
   async login(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
-    const { email, password } = authRequestDto;
+    const { email, password, rememberMe } = authRequestDto;
 
     const user = await this.userRepository.findOne({ where: { email } });
 
@@ -40,53 +40,70 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      userType: user.userType
+      userType: user.userType,
     };
 
+    const jwtExpiry = rememberMe ? '30d' : '15m';
+    const refreshExpiry = rememberMe ? '31d' : '7d';
+
     const jwtToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
+      expiresIn: jwtExpiry,
     });
 
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
+    // Add rememberMe to refresh token payload only if true
+    const refreshPayload = rememberMe ? { ...payload, rememberMe: true } : payload;
+
+    const refreshToken = await this.jwtService.signAsync(refreshPayload, {
+      expiresIn: refreshExpiry,
     });
 
     const response = new AuthResponseDto();
     response.jwtToken = jwtToken;
     response.refreshToken = refreshToken;
     response.userName = authRequestDto.email;
-    response.expirationTime = "15m"
+    response.expirationTime = jwtExpiry;
+
     return response;
   }
 
-  async refreshToken(refreshToken: string): Promise<AuthResponseDto> {
-    try {
-      const payload = await this.jwtService.verifyAsync(refreshToken);
+async refreshToken(refreshToken: string): Promise<AuthResponseDto> {
+  try {
+    const payload = await this.jwtService.verifyAsync(refreshToken);
 
-      // Add userType here if it exists in the original payload
-      const newPayload = {
-        sub: payload.sub,
-        email: payload.email,
-        userType: payload.userType
-      };
+    // Extract rememberMe flag if present
+    const rememberMe = payload.rememberMe === true;
 
-      const newJwtToken = await this.jwtService.signAsync(newPayload, {
-        expiresIn: '15m',
-      });
+    const newPayload = {
+      sub: payload.sub,
+      email: payload.email,
+      userType: payload.userType,
+    };
 
-      const newRefreshToken = await this.jwtService.signAsync(newPayload, {
-        expiresIn: '7d',
-      });
+    const jwtExpiry = rememberMe ? '30d' : '15m';
+    const refreshExpiry = rememberMe ? '31d' : '7d';
 
-      const response = new AuthResponseDto();
-      response.jwtToken = newJwtToken;
-      response.refreshToken = newRefreshToken;
+    const newJwtToken = await this.jwtService.signAsync(newPayload, {
+      expiresIn: jwtExpiry,
+    });
 
-      return response;
-    } catch (err) {
-      throw new ServiceException('Invalid or expired refresh token!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
-    }
+    // Add rememberMe to refresh token payload only if true
+    const refreshPayload = rememberMe ? { ...newPayload, rememberMe: true } : newPayload;
+
+    const newRefreshToken = await this.jwtService.signAsync(refreshPayload, {
+      expiresIn: refreshExpiry,
+    });
+
+    const response = new AuthResponseDto();
+    response.jwtToken = newJwtToken;
+    response.refreshToken = newRefreshToken;
+    response.expirationTime = jwtExpiry;
+    response.userName = payload.email; // 👈 add email here to response
+
+    return response;
+  } catch (err) {
+    throw new ServiceException('Invalid or expired refresh token!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
   }
+}
 
   async handleForgotPassword(email: string) {
     const user = await this.userRepository.findOne({ where: { email } });
