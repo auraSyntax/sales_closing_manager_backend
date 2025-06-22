@@ -32,20 +32,22 @@ export class UserService {
   async createUser(dto: UserDto): Promise<ResponseDto> {
     await this.validateEmailUniqueness(dto.email, dto.id);
 
+    const isNewUser = !dto.id;
     const user = await this.convert(dto);
+
     await this.userRepository.save(user);
 
-    await this.mailService.sendMail(
-      dto.email,
-      'Welcome to our platform',
-      { fullName: dto.fullName },
-      'welcome-template'
-    );
+    if (isNewUser) {
+      await this.mailService.sendMail(
+        dto.email,
+        'Welcome to our platform',
+        { fullName: dto.fullName },
+        'welcome-template'
+      );
+    }
+
     return new ResponseDto('USER_SAVED');
-
-
   }
-
 
   private async validateEmailUniqueness(email: string, userId?: string): Promise<void> {
     const query = this.userRepository.createQueryBuilder('user')
@@ -58,32 +60,36 @@ export class UserService {
     const existingUser = await query.getOne();
 
     if (existingUser) {
-      throw new ServiceException('Email already exists','Bad request',HttpStatus.BAD_REQUEST);
+      throw new ServiceException('Email already exists', 'Bad request', HttpStatus.BAD_REQUEST);
     }
   }
 
   private async convert(dto: UserDto): Promise<User> {
     if (dto.id) {
       const existing = await this.userRepository.findOneBy({ id: dto.id });
-      if (!existing)  throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
-
-      existing.fullName = dto.fullName;
-      existing.companyName = dto.companyName;
-      existing.email = dto.email;
-      existing.phoneNo = dto.phoneNo;
-
-      if (dto.password) {
-        existing.password = await this.hashPassword(dto.password);
+      if (!existing) {
+        throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
       }
 
+      // Only update fields other than email and password
+      existing.fullName = dto.fullName;
+      existing.companyName = dto.companyName;
+      existing.phoneNo = dto.phoneNo;
       existing.adminId = dto.adminId;
       existing.isActive = dto.isActive ?? true;
       existing.logo = dto.logo;
       existing.userType = dto.userType ?? UserType.ADMIN;
+      existing.sirenNumber = dto.sirenNumber
+      existing.legalName = dto.legalName
+      existing.address = dto.address
+      existing.nafCode = dto.nafCode
+      existing.legalStatus = dto.legalStatus
+      existing.workForceSize = dto.workForceSize
 
       return existing;
     }
 
+    // For new users, hash password and include email
     const hashedPassword = await this.hashPassword(dto.password);
 
     return this.userRepository.create({
@@ -93,6 +99,7 @@ export class UserService {
       userType: dto.userType ?? UserType.ADMIN,
     });
   }
+
 
   private async hashPassword(password: string): Promise<string> {
     const saltRounds = 10;
@@ -157,7 +164,7 @@ export class UserService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
-       throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
+      throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
     return this.userConverter.convert(user);
@@ -165,7 +172,7 @@ export class UserService {
 
   async deleteUser(id: string): Promise<ResponseDto> {
     const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
+    if (!user) throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
 
     await this.userRepository.delete(user.id);
     return new ResponseDto("User deleted")
@@ -175,7 +182,7 @@ export class UserService {
     const result = await this.userRepository.update(id, { isActive: status });
 
     if (result.affected === 0) {
-      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST)
+      throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST)
     }
 
     return new ResponseDto("User status updated successfully");
@@ -184,12 +191,12 @@ export class UserService {
   async updateUserCredentials(dto: UpdateCredentialsDto): Promise<ResponseDto> {
     const user = await this.userRepository.findOneBy({ id: dto.userId });
     if (!user) {
-      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
+      throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
     const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
     if (!isPasswordValid) {
-      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
+      throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
     await this.validateEmailUniqueness(dto.newEmail, dto.userId);
@@ -233,7 +240,7 @@ export class UserService {
     console.log('Query result:', result);
 
     if (!result) {
-      throw new ServiceException('No user found for the given adminId','Bad request',HttpStatus.BAD_REQUEST);
+      throw new ServiceException('No user found for the given adminId', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
     return {
