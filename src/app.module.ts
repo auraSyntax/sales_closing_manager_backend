@@ -11,6 +11,13 @@ import { AuthService } from './service/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { CloudinaryModule } from './cloudinary.module';
 import { TokenService } from './service/token.service';
+import { Services } from './entity/services';
+import { ServiceService } from './service/service.service';
+import { ServicesController } from './controller/services.controller';
+import { ServiceConverter } from './converter/service.converter';
+import { Priviledge} from './entity/privilege';
+import { Role } from './entity/role';
+import { RolePriviledge } from './entity/role_privilege';
 
 @Module({
   imports: [
@@ -29,13 +36,13 @@ import { TokenService } from './service/token.service';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        entities: [User],
+        entities: [User, Services,Role,Priviledge,RolePriviledge],
         synchronize: true,
         logging: true,
       }),
     }),
 
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Services]), // ✅ include Services here
 
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -46,13 +53,14 @@ import { TokenService } from './service/token.service';
       }),
     }),
   ],
-  controllers: [UserController, AuthController],
+  controllers: [UserController, AuthController, ServicesController],
   providers: [
     UserService,
     UserConverter,
     EmailService,
     AuthService,
     TokenService,
+    ServiceService, ServiceConverter
   ],
 })
 export class AppModule {}

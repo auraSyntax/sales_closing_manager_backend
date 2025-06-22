@@ -7,7 +7,6 @@ import { UserDto } from 'src/dto/user.dto';
 import { UserResponseDto } from 'src/dto/user.response.dto';
 import { User } from 'src/entity/user';
 import { UserType } from 'src/enums/user_type.enum';
-import { UserRepository } from 'src/repository/user.repository';
 import { Repository } from 'typeorm';
 import { EmailService } from './mail.service';
 import { EmailDataDto } from 'src/dto/email-data.dto';
@@ -71,7 +70,6 @@ export class UserService {
         throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
       }
 
-      // Only update fields other than email and password
       existing.fullName = dto.fullName;
       existing.companyName = dto.companyName;
       existing.phoneNo = dto.phoneNo;

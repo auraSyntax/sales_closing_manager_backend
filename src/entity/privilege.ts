@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('privilege')
-export class Role {
+export class Priviledge {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
