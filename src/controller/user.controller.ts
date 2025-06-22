@@ -23,7 +23,7 @@ export class UserController {
   }
 
   @Get('user-by-id')
-  async getUserById(@Param('userId') userId: string): Promise<UserDto> {
+  async getUserById(@Query('userId') userId: string): Promise<UserDto> {
     if (!userId) {
       throw new NotFoundException("userId can't be blank");
     }

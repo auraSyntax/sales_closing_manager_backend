@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserConverter } from 'src/converter/user.converter';
 import { PaginatedResponseDto } from 'src/dto/paginated.response.dto';
@@ -15,6 +15,7 @@ import * as bcrypt from 'bcrypt';
 import { UpdateCredentialsDto } from 'src/dto/user.credentials.dto';
 import { CurrentUserDetailsDto } from 'src/dto/current-user-details.dto';
 import { TokenService } from './token.service';
+import { ServiceException } from 'src/exception/service-exception';
 
 
 @Injectable()
@@ -57,14 +58,14 @@ export class UserService {
     const existingUser = await query.getOne();
 
     if (existingUser) {
-      throw new Error('EMAIL_ALREADY_EXISTS');
+      throw new ServiceException('Email already exists','Bad request',HttpStatus.BAD_REQUEST);
     }
   }
 
   private async convert(dto: UserDto): Promise<User> {
     if (dto.id) {
       const existing = await this.userRepository.findOneBy({ id: dto.id });
-      if (!existing) throw new Error('USER_NOT_FOUND');
+      if (!existing)  throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
 
       existing.fullName = dto.fullName;
       existing.companyName = dto.companyName;
@@ -156,7 +157,7 @@ export class UserService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+       throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
     }
 
     return this.userConverter.convert(user);
@@ -164,7 +165,7 @@ export class UserService {
 
   async deleteUser(id: string): Promise<ResponseDto> {
     const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException();
+    if (!user) throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
 
     await this.userRepository.delete(user.id);
     return new ResponseDto("User deleted")
@@ -174,7 +175,7 @@ export class UserService {
     const result = await this.userRepository.update(id, { isActive: status });
 
     if (result.affected === 0) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST)
     }
 
     return new ResponseDto("User status updated successfully");
@@ -183,12 +184,12 @@ export class UserService {
   async updateUserCredentials(dto: UpdateCredentialsDto): Promise<ResponseDto> {
     const user = await this.userRepository.findOneBy({ id: dto.userId });
     if (!user) {
-      throw new Error('USER_NOT_FOUND');
+      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
     }
 
     const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
     if (!isPasswordValid) {
-      throw new Error('INVALID_CURRENT_PASSWORD');
+      throw new ServiceException('User not found','Bad request',HttpStatus.BAD_REQUEST);
     }
 
     await this.validateEmailUniqueness(dto.newEmail, dto.userId);
@@ -232,7 +233,7 @@ export class UserService {
     console.log('Query result:', result);
 
     if (!result) {
-      throw new NotFoundException('No user found for the given adminId');
+      throw new ServiceException('No user found for the given adminId','Bad request',HttpStatus.BAD_REQUEST);
     }
 
     return {

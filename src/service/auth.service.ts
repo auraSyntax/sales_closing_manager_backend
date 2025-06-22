@@ -20,7 +20,7 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService
-  ) {  }
+  ) { }
 
   async login(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
     const { email, password } = authRequestDto;
@@ -54,8 +54,9 @@ export class AuthService {
     const response = new AuthResponseDto();
     response.jwtToken = jwtToken;
     response.refreshToken = refreshToken;
-    response.userName = authRequestDto.email;
+    response.userName = user.fullName;
     response.expirationTime = "15m"
+    response.email = authRequestDto.email
     return response;
   }
 
@@ -77,11 +78,15 @@ export class AuthService {
       const newRefreshToken = await this.jwtService.signAsync(newPayload, {
         expiresIn: '7d',
       });
+    const existing = await this.userRepository.findOneBy({ id: payload.sub });
+
 
       const response = new AuthResponseDto();
       response.jwtToken = newJwtToken;
       response.refreshToken = newRefreshToken;
-
+      response.expirationTime = "15m"
+      response.email = payload.email
+      response.userName = existing?.fullName ?? '';
       return response;
     } catch (err) {
       throw new ServiceException('Invalid or expired refresh token!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
