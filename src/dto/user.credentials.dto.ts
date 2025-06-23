@@ -11,9 +11,5 @@ export class UpdateCredentialsDto {
 
   @IsString()
   @IsNotEmpty()
-  currentPassword: string;
-
-  @IsString()
-  @IsNotEmpty()
   newPassword: string;
 }

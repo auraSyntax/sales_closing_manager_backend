@@ -28,19 +28,29 @@ export class UserService {
     private readonly tokenService: TokenService
   ) { }
 
-  async createUser(dto: UserDto): Promise<ResponseDto> {
+  async createUser(dto: UserDto, request: Request): Promise<ResponseDto> {
     await this.validateEmailUniqueness(dto.email, dto.id);
 
     const isNewUser = !dto.id;
     const user = await this.convert(dto);
+
+    const authHeader = request.headers['authorization'];
+
+    if (!authHeader) {
+      throw new UnauthorizedException('Authorization header missing');
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const tokenInfo = TokenService.getTokenInfo(token);
+    const adminId = tokenInfo.sub; // assuming sub holds adminId
 
     await this.userRepository.save(user);
 
     if (isNewUser) {
       const resetToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-      // Optionally save the token if needed
+      // Set token and expiration (1 year from now)
       user.resetToken = resetToken;
+      user.resetTokenExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days in ms
       user.isFirstLogin = true;
       await this.userRepository.save(user);
 
@@ -51,6 +61,7 @@ export class UserService {
         dto.email,
         'Your Account Has Been Created',
         {
+          EMAIL:dto.email,
           USER_NAME: dto.fullName,
           TEMP_PASSWORD: dto.password,
           RESET_LINK: resetLink,
@@ -97,7 +108,7 @@ export class UserService {
       existing.nafCode = dto.nafCode
       existing.legalStatus = dto.legalStatus
       existing.workForceSize = dto.workForceSize
-      
+
       return existing;
     }
 
@@ -221,17 +232,34 @@ export class UserService {
       throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
-    if (!isPasswordValid) {
-      throw new ServiceException('User not found', 'Bad request', HttpStatus.BAD_REQUEST);
-    }
-
     await this.validateEmailUniqueness(dto.newEmail, dto.userId);
 
     user.email = dto.newEmail;
     user.password = await this.hashPassword(dto.newPassword);
 
+    // Generate a reset token and expiry
+    const resetToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    user.resetToken = resetToken;
+    user.resetTokenExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+    user.isFirstLogin = true;
+
     await this.userRepository.save(user);
+
+    // Send credentials email
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    const resetLink = `${frontendUrl}/new-password?token=${resetToken}`;
+
+    await this.mailService.sendMail(
+      user.email,
+      'Your Credentials Have Been Updated',
+      {
+        USER_NAME: user.fullName,
+        USER_EMAIL: user.email,
+        TEMP_PASSWORD: dto.newPassword,
+        RESET_LINK: resetLink,
+      },
+      'credentials-update-confirmation-template'
+    );
 
     return new ResponseDto('CREDENTIALS_UPDATED_SUCCESSFULLY');
   }

@@ -18,6 +18,8 @@ import { ServiceConverter } from './converter/service.converter';
 import { Priviledge} from './entity/privilege';
 import { Role } from './entity/role';
 import { RolePriviledge } from './entity/role_privilege';
+import { FileController } from './controller/file.controller';
+import { FileService } from './service/file.service';
 
 @Module({
   imports: [
@@ -53,13 +55,14 @@ import { RolePriviledge } from './entity/role_privilege';
       }),
     }),
   ],
-  controllers: [UserController, AuthController, ServicesController],
+  controllers: [UserController, AuthController, ServicesController, FileController],
   providers: [
     UserService,
     UserConverter,
     EmailService,
     AuthService,
     TokenService,
+    FileService,
     ServiceService, ServiceConverter
   ],
 })

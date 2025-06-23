@@ -29,7 +29,7 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({ where: { email } });
 
-    if (!user) {
+    if (!user || user.isActive == false) {
       throw new ServiceException('User not found!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
@@ -122,7 +122,9 @@ export class AuthService {
     }
 
     const resetToken = uuidv4();
+    const expiresIn = 1 * 60 * 1000; 
     user.resetToken = resetToken;
+    user.resetTokenExpires = new Date(Date.now() + expiresIn);
     await this.userRepository.save(user);
 
     // Get frontend URL from env
@@ -149,20 +151,29 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { resetToken, newPassword } = resetPasswordDto;
+  const { resetToken, newPassword } = resetPasswordDto;
 
-    const user = await this.userRepository.findOne({ where: { resetToken: resetToken } });
-    if (!user) {
-      throw new ServiceException('Invalid or expired reset token!', 'Bad Request', HttpStatus.BAD_REQUEST);
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.resetToken = "";
-    user.isFirstLogin = false;
-
-    await this.userRepository.save(user);
-
-    return { message: 'Password successfully updated!' };
+  const user = await this.userRepository.findOne({ where: { resetToken } });
+  if (!user) {
+    throw new ServiceException('Invalid reset token!', 'Bad Request', HttpStatus.BAD_REQUEST);
   }
+
+  // Check if token has expired
+  if (!user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+    throw new ServiceException('Reset token has expired!', 'Bad Request', HttpStatus.BAD_REQUEST);
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  user.password = hashedPassword;
+
+  // Clear reset token
+  user.resetToken = "";
+  user.isFirstLogin = false;
+
+  await this.userRepository.save(user);
+
+  return { message: 'Password successfully updated!' };
+}
+
 }
