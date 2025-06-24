@@ -37,7 +37,7 @@ export class UserService {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Authorization header missing');
+      throw new ServiceException('Authorization header missing', "Unauthorized", HttpStatus.UNAUTHORIZED);
     }
     const token = authHeader.replace('Bearer ', '');
     const tokenInfo = TokenService.getTokenInfo(token);
@@ -139,7 +139,7 @@ export class UserService {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Authorization header missing');
+      throw new ServiceException('Authorization header missing', "Bad Request", HttpStatus.BAD_REQUEST);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -168,7 +168,7 @@ export class UserService {
         }),
       )
       .andWhere('u.userType = :userType')
-      .andWhere('u.adminId = :adminId') // ✅ add this here
+      .andWhere('u.adminId = :adminId')
       .setParameters({ search: likeSearch, userType: 'ADMIN', adminId })
       .skip(offset)
       .take(size);
@@ -285,7 +285,7 @@ export class UserService {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Authorization header missing');
+      throw new ServiceException('Authorization header missing', "Unauthprized", HttpStatus.BAD_REQUEST);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -295,7 +295,7 @@ export class UserService {
     console.log('Extracted adminId:', adminId);
 
     if (!adminId) {
-      throw new UnauthorizedException('Invalid token - adminId not found');
+      throw new ServiceException('Invalid token - adminId not found', "Unauthprized", HttpStatus.BAD_REQUEST);
     }
 
     const result = await this.userRepository
@@ -329,7 +329,4 @@ export class UserService {
   }
 }
 
-function uuidv4() {
-  throw new Error('Function not implemented.');
-}
 

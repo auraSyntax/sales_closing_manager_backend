@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { ServiceException } from 'src/exception/service-exception';
 
 @Injectable()
 export class FileService {
@@ -48,14 +49,14 @@ async uploadFile(file: Express.Multer.File): Promise<{ imageUrl: string; imageUr
       // Extract public_id from URL
       const publicId = this.extractPublicId(imageUrl);
       if (!publicId) {
-        throw new Error('Invalid image URL');
+        throw new ServiceException('Invalid image URL',"Bad Request", HttpStatus.BAD_REQUEST);
       }
 
       // Call Cloudinary delete API
       const result = await cloudinary.uploader.destroy(publicId);
 
       if (result.result !== 'ok') {
-        throw new Error(`Failed to delete image: ${result.result}`);
+        throw new ServiceException(`Failed to delete image: ${result.result}`,"Bad Request", HttpStatus.BAD_REQUEST);
       }
 
       return 'Image deleted successfully';
