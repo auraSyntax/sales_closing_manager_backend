@@ -308,7 +308,7 @@ export class UserService {
       profile: result.profile ? baseUrl + result.profile : null,
       totalCompanies: parseInt(result.totalCount, 10),
       activeCompanies: parseInt(result.activeCount, 10),
-      userType: result.userType
+      userType: result.userType === 'SUPER_ADMIN' ? 'SUPER ADMIN' : result.userType,
     };
   }
 }
