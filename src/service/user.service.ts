@@ -132,8 +132,19 @@ export class UserService {
   async getAllUsers(
     page: number,
     size: number,
-    search: string,
+    search: string, request: Request
   ): Promise<PaginatedResponseDto<UserResponseDto>> {
+
+    const authHeader = request.headers['authorization'];
+
+    if (!authHeader) {
+      throw new UnauthorizedException('Authorization header missing');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const tokenInfo = TokenService.getTokenInfo(token);
+    const adminId = tokenInfo.sub;
+
     const offset = (page - 1) * size;
     const likeSearch = search ? `%${search}%` : '%%';
 
@@ -155,9 +166,12 @@ export class UserService {
             .orWhere('u.fullName LIKE :search');
         }),
       )
-      .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
+      .andWhere('u.userType = :userType')
+      .andWhere('u.adminId = :adminId') // ✅ add this here
+      .setParameters({ search: likeSearch, userType: 'ADMIN', adminId })
       .skip(offset)
       .take(size);
+
 
     const [rawResults, total] = await Promise.all([
       query.getRawMany(),
@@ -171,6 +185,7 @@ export class UserService {
           }),
         )
         .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
+        .andWhere('u.adminId = :adminId', { adminId })
         .getCount(),
     ]);
 

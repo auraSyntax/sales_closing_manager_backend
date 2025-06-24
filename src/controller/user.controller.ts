@@ -12,13 +12,13 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Post()
-  async createUser(@Body() userDto: UserDto,@Req() request: Request): Promise<ResponseDto> {
-    return this.userService.createUser(userDto,request);
+  async createUser(@Body() userDto: UserDto, @Req() request: Request): Promise<ResponseDto> {
+    return this.userService.createUser(userDto, request);
   }
 
   @Get()
-  async getAllUsers(@Query('page', ParseIntPipe) page: number, @Query('size', ParseIntPipe) size: number, @Query('search') search: string): Promise<PaginatedResponseDto<UserResponseDto>> {
-    return this.userService.getAllUsers(page, size, search);
+  async getAllUsers(@Query('page', ParseIntPipe) page: number, @Query('size', ParseIntPipe) size: number, @Query('search') search: string, @Req() request: Request): Promise<PaginatedResponseDto<UserResponseDto>> {
+    return this.userService.getAllUsers(page, size, search, request);
   }
 
   @Get('user-by-id')
