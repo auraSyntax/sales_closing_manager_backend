@@ -4,23 +4,40 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
 @Injectable()
 export class FileService {
+  private readonly baseUrl: string;
+
   constructor(private configService: ConfigService) {
     cloudinary.config({
       cloud_name: this.configService.get('CLOUDINARY_CLOUD_NAME'),
       api_key: this.configService.get('CLOUDINARY_API_KEY'),
       api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
     });
+    this.baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL')!; 
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
+async uploadFile(file: Express.Multer.File): Promise<string> {
     return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream({ resource_type: 'auto' }, (error, result: UploadApiResponse) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result.secure_url);
+      const originalNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
+      const publicId = originalNameWithoutExt;
+
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'auto',
+          public_id: publicId,
+          overwrite: true,
+        },
+        (error, result: UploadApiResponse) => {
+          if (error) {
+            reject(error);
+          } else {
+            // Remove baseUrl from secure_url if you want relative path only
+            const relativePath = result.secure_url.replace(this.baseUrl, '');
+
+            // Return relative path only (e.g. "myphoto.png")
+            resolve(relativePath);
+          }
         }
-      }).end(file.buffer);
+      ).end(file.buffer);
     });
   }
 

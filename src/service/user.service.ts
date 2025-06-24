@@ -61,7 +61,7 @@ export class UserService {
         dto.email,
         'Your Account Has Been Created',
         {
-          EMAIL:dto.email,
+          EMAIL: dto.email,
           USER_NAME: dto.fullName,
           TEMP_PASSWORD: dto.password,
           RESET_LINK: resetLink,
@@ -174,10 +174,12 @@ export class UserService {
         .getCount(),
     ]);
 
+    const baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL');
+
     const data = rawResults.map((row) =>
       new UserResponseDto(
         row.u_id,
-        row.u_logo,
+        row.u_logo ? baseUrl + row.u_logo : null,
         row.u_company_name,
         row.u_email,
         row.u_full_name,
@@ -196,7 +198,6 @@ export class UserService {
 
     return paginatedResponseDto;
   }
-
 
   async getUserById(userId: string): Promise<UserDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -299,17 +300,18 @@ export class UserService {
       throw new ServiceException('No user found for the given adminId', 'Bad request', HttpStatus.BAD_REQUEST);
     }
 
+    // Get base URL from config service
+    const baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL');
+
     return {
       userName: result.fullName,
-      profile: result.profile,
+      profile: result.profile ? baseUrl + result.profile : null,
       totalCompanies: parseInt(result.totalCount, 10),
       activeCompanies: parseInt(result.activeCount, 10),
       userType: result.userType
     };
   }
-
 }
-
 
 function uuidv4() {
   throw new Error('Function not implemented.');
