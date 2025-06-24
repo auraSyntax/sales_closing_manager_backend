@@ -7,12 +7,11 @@ import { FileService } from 'src/service/file.service';
 export class FileController {
   constructor(private readonly fileService: FileService) {}
 
-  @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    const imageUrl = await this.fileService.uploadFile(file);
-    return { imageUrl };
-  }
+@Post()
+@UseInterceptors(FileInterceptor('file'))
+async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  return this.fileService.uploadFile(file);  
+}
 
   @Delete()
   async deleteFile(@Body('imageUrl') imageUrl: string) {

@@ -15,7 +15,7 @@ export class FileService {
     this.baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL')!; 
   }
 
-async uploadFile(file: Express.Multer.File): Promise<{ imageUrl: string, imageUrlWithDomain: string }> {
+async uploadFile(file: Express.Multer.File): Promise<{ imageUrl: string; imageUrlWithDomain: string }> {
   return new Promise((resolve, reject) => {
     const originalNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
     const publicId = originalNameWithoutExt;
@@ -30,12 +30,12 @@ async uploadFile(file: Express.Multer.File): Promise<{ imageUrl: string, imageUr
         if (error) {
           reject(error);
         } else {
-          const imageUrlWithDomain = result.secure_url;
-          const imageUrl = imageUrlWithDomain.replace(this.baseUrl, ''); 
-          
+          const baseUrl = this.baseUrl;
+          const relativePath = result.secure_url.replace(baseUrl, '');
+
           resolve({
-            imageUrl,
-            imageUrlWithDomain
+            imageUrl: relativePath,
+            imageUrlWithDomain: result.secure_url,
           });
         }
       }
