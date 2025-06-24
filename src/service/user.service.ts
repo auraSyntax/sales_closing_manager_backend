@@ -52,6 +52,7 @@ export class UserService {
       user.resetToken = resetToken;
       user.resetTokenExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days in ms
       user.isFirstLogin = true;
+      user.adminId = adminId!;
       await this.userRepository.save(user);
 
       const frontendUrl = this.configService.get<string>('FRONTEND_URL');
@@ -299,15 +300,15 @@ export class UserService {
 
     const result = await this.userRepository
       .createQueryBuilder('u')
+      .leftJoin(User, 'child', 'child.adminId = u.id AND child.userType = :userType', { userType: 'ADMIN' })
       .select('u.fullName', 'fullName')
       .addSelect('u.logo', 'profile')
       .addSelect('u.userType', 'userType')
-      .addSelect('COUNT(u.id)', 'totalCount')
-      .addSelect(`SUM(CASE WHEN u.isActive = true THEN 1 ELSE 0 END)`, 'activeCount')
+      .addSelect('COUNT(child.id)', 'totalCount')
+      .addSelect('SUM(CASE WHEN child.isActive = true THEN 1 ELSE 0 END)', 'activeCount')
       .where('u.id = :adminId', { adminId })
-      .groupBy('u.fullName')
-      .addGroupBy('u.logo')
       .getRawOne();
+
 
     console.log('Query result:', result);
 
