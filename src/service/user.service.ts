@@ -37,7 +37,7 @@ export class UserService {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Authorization header missing');
+      throw new ServiceException('Authorization header missing', "Unauthorized", HttpStatus.UNAUTHORIZED);
     }
     const token = authHeader.replace('Bearer ', '');
     const tokenInfo = TokenService.getTokenInfo(token);
@@ -52,6 +52,7 @@ export class UserService {
       user.resetToken = resetToken;
       user.resetTokenExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days in ms
       user.isFirstLogin = true;
+      user.adminId = adminId!;
       await this.userRepository.save(user);
 
       const frontendUrl = this.configService.get<string>('FRONTEND_URL');
@@ -132,8 +133,19 @@ export class UserService {
   async getAllUsers(
     page: number,
     size: number,
-    search: string,
+    search: string, request: Request
   ): Promise<PaginatedResponseDto<UserResponseDto>> {
+
+    const authHeader = request.headers['authorization'];
+
+    if (!authHeader) {
+      throw new ServiceException('Authorization header missing', "Bad Request", HttpStatus.BAD_REQUEST);
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const tokenInfo = TokenService.getTokenInfo(token);
+    const adminId = tokenInfo.sub;
+
     const offset = (page - 1) * size;
     const likeSearch = search ? `%${search}%` : '%%';
 
@@ -155,9 +167,12 @@ export class UserService {
             .orWhere('u.fullName LIKE :search');
         }),
       )
-      .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
+      .andWhere('u.userType = :userType')
+      .andWhere('u.adminId = :adminId')
+      .setParameters({ search: likeSearch, userType: 'ADMIN', adminId })
       .skip(offset)
       .take(size);
+
 
     const [rawResults, total] = await Promise.all([
       query.getRawMany(),
@@ -171,6 +186,7 @@ export class UserService {
           }),
         )
         .andWhere('u.userType = :userType', { search: likeSearch, userType: 'ADMIN' })
+        .andWhere('u.adminId = :adminId', { adminId })
         .getCount(),
     ]);
 
@@ -269,7 +285,7 @@ export class UserService {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Authorization header missing');
+      throw new ServiceException('Authorization header missing', "Unauthprized", HttpStatus.BAD_REQUEST);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -279,20 +295,20 @@ export class UserService {
     console.log('Extracted adminId:', adminId);
 
     if (!adminId) {
-      throw new UnauthorizedException('Invalid token - adminId not found');
+      throw new ServiceException('Invalid token - adminId not found', "Unauthprized", HttpStatus.BAD_REQUEST);
     }
 
     const result = await this.userRepository
       .createQueryBuilder('u')
+      .leftJoin(User, 'child', 'child.adminId = u.id AND child.userType = :userType', { userType: 'ADMIN' })
       .select('u.fullName', 'fullName')
       .addSelect('u.logo', 'profile')
       .addSelect('u.userType', 'userType')
-      .addSelect('COUNT(u.id)', 'totalCount')
-      .addSelect(`SUM(CASE WHEN u.isActive = true THEN 1 ELSE 0 END)`, 'activeCount')
+      .addSelect('COUNT(child.id)', 'totalCount')
+      .addSelect('SUM(CASE WHEN child.isActive = true THEN 1 ELSE 0 END)', 'activeCount')
       .where('u.id = :adminId', { adminId })
-      .groupBy('u.fullName')
-      .addGroupBy('u.logo')
       .getRawOne();
+
 
     console.log('Query result:', result);
 
@@ -313,7 +329,4 @@ export class UserService {
   }
 }
 
-function uuidv4() {
-  throw new Error('Function not implemented.');
-}
 

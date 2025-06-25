@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { ServiceException } from 'src/exception/service-exception';
 
 @Injectable()
 export class FileService {
@@ -15,45 +16,47 @@ export class FileService {
     this.baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL')!; 
   }
 
-async uploadFile(file: Express.Multer.File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const originalNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
-      const publicId = originalNameWithoutExt;
+async uploadFile(file: Express.Multer.File): Promise<{ imageUrl: string; imageUrlWithDomain: string }> {
+  return new Promise((resolve, reject) => {
+    const originalNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
+    const publicId = originalNameWithoutExt;
 
-      cloudinary.uploader.upload_stream(
-        {
-          resource_type: 'auto',
-          public_id: publicId,
-          overwrite: true,
-        },
-        (error, result: UploadApiResponse) => {
-          if (error) {
-            reject(error);
-          } else {
-            // Remove baseUrl from secure_url if you want relative path only
-            const relativePath = result.secure_url.replace(this.baseUrl, '');
+    cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'auto',
+        public_id: publicId,
+        overwrite: true,
+      },
+      (error, result: UploadApiResponse) => {
+        if (error) {
+          reject(error);
+        } else {
+          const baseUrl = this.baseUrl;
+          const relativePath = result.secure_url.replace(baseUrl, '');
 
-            // Return relative path only (e.g. "myphoto.png")
-            resolve(relativePath);
-          }
+          resolve({
+            imageUrl: relativePath,
+            imageUrlWithDomain: result.secure_url,
+          });
         }
-      ).end(file.buffer);
-    });
-  }
+      }
+    ).end(file.buffer);
+  });
+}
 
   async deleteFile(imageUrl: string): Promise<string> {
     try {
       // Extract public_id from URL
       const publicId = this.extractPublicId(imageUrl);
       if (!publicId) {
-        throw new Error('Invalid image URL');
+        throw new ServiceException('Invalid image URL',"Bad Request", HttpStatus.BAD_REQUEST);
       }
 
       // Call Cloudinary delete API
       const result = await cloudinary.uploader.destroy(publicId);
 
       if (result.result !== 'ok') {
-        throw new Error(`Failed to delete image: ${result.result}`);
+        throw new ServiceException(`Failed to delete image: ${result.result}`,"Bad Request", HttpStatus.BAD_REQUEST);
       }
 
       return 'Image deleted successfully';

@@ -17,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly configService: ConfigService, 
+    private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
@@ -33,7 +33,7 @@ export class AuthService {
       throw new ServiceException('User not found!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
-     if (user.isFirstLogin) {
+    if (user.isFirstLogin) {
       throw new ServiceException('Reset your password to continue the login!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
@@ -63,12 +63,16 @@ export class AuthService {
       expiresIn: refreshExpiry,
     });
 
+    const baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL');
+
     const response = new AuthResponseDto();
     response.jwtToken = jwtToken;
     response.refreshToken = refreshToken;
     response.expirationTime = jwtExpiry;
     response.userName = user.fullName;
-    response.email = authRequestDto.email
+    response.email = authRequestDto.email;
+    response.userType = user.userType === 'SUPER_ADMIN' ? 'SUPER ADMIN' : user.userType;
+    response.profile = user.logo ? baseUrl + user.logo : null!;
     return response;
   }
 
@@ -101,14 +105,21 @@ export class AuthService {
 
       const existing = await this.userRepository.findOneBy({ id: payload.sub });
 
+      const baseUrl = this.configService.get<string>('CLOUDINARY_BASE_URL');
+
       const response = new AuthResponseDto();
       response.jwtToken = newJwtToken;
       response.refreshToken = newRefreshToken;
       response.expirationTime = jwtExpiry;
-      response.email = payload.email
+      response.email = payload.email;
       response.userName = existing?.fullName ?? '';
+      response.userType = existing
+        ? (existing.userType === 'SUPER_ADMIN' ? 'SUPER ADMIN' : existing.userType)
+        : '';
+      response.profile = existing?.logo ? baseUrl + existing.logo : null!;
 
       return response;
+
 
     } catch (err) {
       throw new ServiceException('Invalid or expired refresh token!', 'Unauthorized', HttpStatus.UNAUTHORIZED);
@@ -122,7 +133,7 @@ export class AuthService {
     }
 
     const resetToken = uuidv4();
-    const expiresIn = 1 * 60 * 1000; 
+    const expiresIn = 1 * 60 * 1000;
     user.resetToken = resetToken;
     user.resetTokenExpires = new Date(Date.now() + expiresIn);
     await this.userRepository.save(user);
@@ -151,29 +162,29 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-  const { resetToken, newPassword } = resetPasswordDto;
+    const { resetToken, newPassword } = resetPasswordDto;
 
-  const user = await this.userRepository.findOne({ where: { resetToken } });
-  if (!user) {
-    throw new ServiceException('Invalid reset token!', 'Bad Request', HttpStatus.BAD_REQUEST);
+    const user = await this.userRepository.findOne({ where: { resetToken } });
+    if (!user) {
+      throw new ServiceException('Invalid reset token!', 'Bad Request', HttpStatus.BAD_REQUEST);
+    }
+
+    // Check if token has expired
+    if (!user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+      throw new ServiceException('Reset token has expired!', 'Bad Request', HttpStatus.BAD_REQUEST);
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    // Clear reset token
+    user.resetToken = "";
+    user.isFirstLogin = false;
+
+    await this.userRepository.save(user);
+
+    return { message: 'Password successfully updated!' };
   }
-
-  // Check if token has expired
-  if (!user.resetTokenExpires || user.resetTokenExpires < new Date()) {
-    throw new ServiceException('Reset token has expired!', 'Bad Request', HttpStatus.BAD_REQUEST);
-  }
-
-  // Hash new password
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-  user.password = hashedPassword;
-
-  // Clear reset token
-  user.resetToken = "";
-  user.isFirstLogin = false;
-
-  await this.userRepository.save(user);
-
-  return { message: 'Password successfully updated!' };
-}
 
 }
