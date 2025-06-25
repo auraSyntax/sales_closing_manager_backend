@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import { RolePriviledge } from './role_privilege';
 
 @Entity('role')
 export class Role {
@@ -8,9 +9,12 @@ export class Role {
   @Column({ name: 'role_name' })
   roleName: string;
 
-  @Column({ default: true ,name:'is_active'})
+  @Column({ default: true, name: 'is_active' })
   isActive: boolean;
 
-  @Column({name:'admin_id' })
+  @Column({ name: 'admin_id' })
   adminId: string;
+
+  @OneToMany(() => RolePriviledge, rp => rp.priviledge, { cascade: true })
+  rolePriviledges: RolePriviledge[];
 }

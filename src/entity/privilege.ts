@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import { RolePriviledge } from './role_privilege';
 
 @Entity('privilege')
 export class Priviledge {
@@ -7,4 +8,7 @@ export class Priviledge {
 
   @Column({ name: 'privilege' })
   privilege: string;
+
+  @OneToMany(() => RolePriviledge, rp => rp.priviledge, { cascade: true})
+  rolePriviledges: RolePriviledge[];
 }

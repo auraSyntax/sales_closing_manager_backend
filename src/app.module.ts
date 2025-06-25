@@ -20,6 +20,12 @@ import { Role } from './entity/role';
 import { RolePriviledge } from './entity/role_privilege';
 import { FileController } from './controller/file.controller';
 import { FileService } from './service/file.service';
+import { PriviledgeController } from './controller/priviledge.controller';
+import { PriviledgeConverter } from './converter/priviledge.converter';
+import { PriviledgeService } from './service/priviledge.service';
+import { RoleConverter } from './converter/role.converter';
+import { RoleService } from './service/role.service';
+import { RoleController } from './controller/role.controller';
 
 @Module({
   imports: [
@@ -44,7 +50,7 @@ import { FileService } from './service/file.service';
       }),
     }),
 
-    TypeOrmModule.forFeature([User, Services]), // ✅ include Services here
+    TypeOrmModule.forFeature([User, Services,Priviledge,Role,RolePriviledge]), // ✅ include Services here
 
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -55,7 +61,7 @@ import { FileService } from './service/file.service';
       }),
     }),
   ],
-  controllers: [UserController, AuthController, ServicesController, FileController],
+  controllers: [UserController, AuthController, ServicesController, FileController,PriviledgeController,RoleController],
   providers: [
     UserService,
     UserConverter,
@@ -63,7 +69,12 @@ import { FileService } from './service/file.service';
     AuthService,
     TokenService,
     FileService,
-    ServiceService, ServiceConverter
+    ServiceService, 
+    ServiceConverter,
+    PriviledgeConverter,
+    PriviledgeService,
+    RoleConverter,
+    RoleService
   ],
 })
 export class AppModule {}
